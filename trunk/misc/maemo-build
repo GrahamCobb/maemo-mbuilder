@@ -1,0 +1,44 @@
+#!/bin/sh
+#
+# Build maemo packages using chroot
+#
+# Has to be run as root.  But the work is done in the chroot using qemu-build
+#
+
+prefix=""
+[ -d /vranx-linux ] && prefix=/vranx-linux
+root=$prefix/home/dbtest
+v=$prefix/home/scratchbox-apophis/users/cobb/home/cobb
+
+# mount proc
+[ -d $prefix/home/dbtest/proc/1 ] ||
+  mount proc -t proc $root/proc
+
+# create scratchbox v directory
+[ -d $root/scratchbox/users/scratchbox/home/scratchbox/v ] ||
+  mkdir $root/scratchbox/users/scratchbox/home/scratchbox/v
+
+# bind mount scratchbox v directory
+[ -f $root/scratchbox/users/scratchbox/home/scratchbox/v/qemu-build ] || 
+  mount -o bind $v $root/scratchbox/users/scratchbox/home/scratchbox/v
+
+# Start scratchbox
+chroot $root /scratchbox/sbin/sbox_ctl start
+
+# Run build
+chroot $root su - scratchbox -c "scratchbox v/qemu-build $*"
+
+# Stop scratchbox
+chroot $root /scratchbox/sbin/sbox_ctl stop
+
+# Unmount binfmt_misc in chroot
+chroot $root umount /proc/sys/fs/binfmt_misc
+
+# Unmount v directory
+umount $root/scratchbox/users/scratchbox/home/scratchbox/v
+
+# Unmount proc
+umount $root/proc 
+
+echo "Note: ~/v = $v" 
+
